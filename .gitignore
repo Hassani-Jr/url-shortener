@@ -1,2 +1,24 @@
 .env
 go.sum
+# Binaries
+bin/
+tmp/
+*.exe
+
+# Environment
+.env
+.env.local
+
+# IDE
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/
