@@ -10,13 +10,18 @@ import (
 	"syscall"
 	"time"
 
-
 	"github.com/Hassani-Jr/url-shortener/internal/handler"
-    "github.com/Hassani-Jr/url-shortener/internal/service"
-    "github.com/Hassani-Jr/url-shortener/internal/storage"
+	"github.com/Hassani-Jr/url-shortener/internal/service"
+	"github.com/Hassani-Jr/url-shortener/internal/storage"
+	"github.com/joho/godotenv"
 )
 
 func main(){
+	if err := godotenv.Load(); err != nil{
+		log.Println("No .env file found, using environment variables")
+	}
+
+	port := getEnv("SERVER_PORT", "8080")
 	// Initiallize dependencies
 	store := storage.NewMemoryStorage()
 	svc := service.NewShortenerService(store)
@@ -35,7 +40,7 @@ func main(){
 
  
 	server := &http.Server{
-		Addr: ":8080",
+		Addr: ":"+ port,
 		Handler: loggingMiddleware(mux),
 		ReadTimeout: 15 * time.Second,
 		WriteTimeout: 15 * time.Second,
@@ -79,5 +84,9 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func uniqueRequest
-
+func getEnv(key, fallback string) string {
+	if value := os.Getenv(key); value != "" {
+		return value
+	}
+	return fallback
+}
