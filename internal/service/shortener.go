@@ -29,9 +29,11 @@ func (s *ShortenerService) ShortenURL(ctx context.Context, longURL string) (stri
 	if err != nil {
 		return "", apperror.Internal("Failed to generate code", err)
 	}
+	
+	
 
 	// Save to storage
-	if err := s.storage.Save(ctx, shortCode, longURL); err != nil {
+	if err := s.storage.Save(ctx, &storage.URL{ShortCode: shortCode,LongURL: longURL,CreatedAt: time.Now()}); err != nil {
 		return "", err
 	}
 
@@ -48,11 +50,11 @@ func (s *ShortenerService) GetOriginalURL(ctx context.Context, shortCode string)
 		return "", err
 	}
 
-	if url.Value == ""{
+	if url.LongURL == ""{
 		return "", apperror.NotFound("Short URL not found")
 	}
 
-	return url.Value, nil
+	return url.LongURL, nil
 }
 
 func (s *ShortenerService) GetTimeStamp(ctx context.Context, shortCode string) (time.Time, error){
@@ -64,23 +66,23 @@ func (s *ShortenerService) GetTimeStamp(ctx context.Context, shortCode string) (
 		return time.Time{}, err
 	}
 
-	if url.Time.IsZero() {
+	if url.CreatedAt.IsZero() {
 		return time.Time{}, apperror.NotFound("Timestamp not found")
 	}
 
-	return url.Time,nil
+	return url.CreatedAt,nil
 }
 
-func (s *ShortenerService) DeleteURL(ctx context.Context, shortCode string)(bool,error) {
+func (s *ShortenerService) DeleteURL(ctx context.Context, shortCode string)(error) {
 	ctx, cancel := context.WithTimeout(ctx, 2 * time.Second)
 	defer cancel()
 
-	deleted, err := s.storage.Delete(ctx,shortCode)
+	err := s.storage.Delete(ctx,shortCode)
 	if err != nil{
-		return false, err
+		return err
 	}
 
-	return deleted, nil
+	return nil
 }
 
 func generateShortCode() (string, error){
