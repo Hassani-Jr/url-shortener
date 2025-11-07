@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/Hassani-Jr/url-shortener/internal/handler"
+	"github.com/Hassani-Jr/url-shortener/internal/middleware"
 	"github.com/Hassani-Jr/url-shortener/internal/service"
 	"github.com/Hassani-Jr/url-shortener/internal/storage"
 	"github.com/joho/godotenv"
@@ -38,10 +39,12 @@ func main(){
 	mux.HandleFunc("DELETE /{code}",urlHandler.Delete)
 	mux.HandleFunc("GET /health",healthHandler)
 
+	handler := middleware.RequestID(loggingMiddleware(mux))
+
  
 	server := &http.Server{
 		Addr: ":"+ port,
-		Handler: loggingMiddleware(mux),
+		Handler: handler,
 		ReadTimeout: 15 * time.Second,
 		WriteTimeout: 15 * time.Second,
 		IdleTimeout: 60 * time.Second,
@@ -78,9 +81,10 @@ func healthHandler (w http.ResponseWriter, r *http.Request){
 func loggingMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request){
 		start := time.Now()
+		requestID := middleware.GetRequestID(r.Context())
 		log.Printf("%s %s", r.Method, r.URL.Path)
 		next.ServeHTTP(w, r)
-		log.Printf("Completed in %v", time.Since(start))
+		log.Printf("[%s] Completed in %v", requestID ,time.Since(start))
 	})
 }
 

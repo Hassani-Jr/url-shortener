@@ -9,28 +9,29 @@ import (
 )
 
 type URLStorage interface {
-	Save(ctx context.Context, shortCode, longURL string) error
-	Get(ctx context.Context, shortCode string) (UrlMap, error)
-	Delete(ctx context.Context,shortCode string) (bool,error)
+	Save(ctx context.Context, url *URL) error
+	Get(ctx context.Context, shortCode string) (*URL, error)
+	Delete(ctx context.Context,shortCode string) (error)
 }
 
-type UrlMap struct{
-	Value string
-	Time time.Time
+type URL struct{
+	ShortCode string
+	LongURL string
+	CreatedAt time.Time
 }
 
 // MemoryStorage is an in-memory implementation (testing/dev)
 type MemoryStorage struct {
 	mu sync.RWMutex
-	urls map[string]UrlMap
+	urls map[string]URL
 }
 
 func NewMemoryStorage() *MemoryStorage{
 	return &MemoryStorage{
-		urls : make(map[string]UrlMap),
+		urls : make(map[string]URL),
 	}
 }
- func (m *MemoryStorage) Save(ctx context.Context, shortCode, longURL string) error {
+ func (m *MemoryStorage) Save(ctx context.Context, url *URL) error {
 	if ctx.Err() != nil{
 		return apperror.Internal("Context Cancelled", ctx.Err())
 	}
@@ -39,17 +40,17 @@ func NewMemoryStorage() *MemoryStorage{
 	defer m.mu.Unlock()
 
 	// Duplicates
-	if _,exists := m.urls[shortCode]; exists {
+	if _,exists := m.urls[url.ShortCode]; exists {
 		return apperror.BadRequest("Short code already exists", nil)
 	}
-	 m.urls[shortCode] = UrlMap{longURL,time.Now()}
+	 m.urls[url.ShortCode] = URL{url.ShortCode,url.LongURL,url.CreatedAt}
 
 	 return nil
  }
 
- func (m *MemoryStorage) Get(ctx context.Context, shortCode string) (UrlMap, error) {
+ func (m *MemoryStorage) Get(ctx context.Context, shortCode string) (*URL, error) {
 	if ctx.Err() != nil {
-		return UrlMap{}, apperror.Internal("Context cancelled", ctx.Err())
+		return &URL{}, apperror.Internal("Context cancelled", ctx.Err())
 	}
 
 	m.mu.RLock()
@@ -57,25 +58,25 @@ func NewMemoryStorage() *MemoryStorage{
 
 	url,exists := m.urls[shortCode]
 	if !exists {
-		return UrlMap{},apperror.NotFound("Short code not found")
+		return &URL{},apperror.NotFound("Short code not found")
 	}
 
-	return  url,nil
+	return  &url,nil
  }
 
- func (m *MemoryStorage) Delete(ctx context.Context, shortCode string) (bool,error) {
+ func (m *MemoryStorage) Delete(ctx context.Context, shortCode string) (error) {
 	if ctx.Err() != nil{
-		return false ,apperror.Internal("Context Cancelled", ctx.Err())
+		return apperror.Internal("Context Cancelled", ctx.Err())
 	}
 
-	m.mu.RLock()
-	defer m.mu.RUnlock()
+	m.mu.Lock()
+	defer m.mu.Unlock()
 
 	_,exists := m.urls[shortCode]
 	if !exists {
-		return false,apperror.NotFound("Short code not found")
+		return apperror.NotFound("Short code not found")
 	}
 	delete(m.urls,shortCode)
 
-	return true,nil
+	return nil
  }

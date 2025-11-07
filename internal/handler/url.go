@@ -3,10 +3,10 @@ package handler
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 	"time"
 
 	"github.com/Hassani-Jr/url-shortener/internal/service"
+	"github.com/Hassani-Jr/url-shortener/internal/validator"
 	"github.com/Hassani-Jr/url-shortener/pkg/logger/apperror"
 )
 
@@ -44,24 +44,15 @@ func (h *URLHandler) Shorten(w http.ResponseWriter, r *http.Request){
 		RespondError(w, apperror.BadRequest("Invalid JSON", err))
 		return
 	}
-	//Validate
-	if req.URL == ""{
-		RespondError(w, apperror.BadRequest("URL is required", nil))
-		return 
-	}
 
-	if len(req.URL) > 2000 {
-		RespondError(w, apperror.BadRequest("URL is too long",nil))
-		return
-	}
-
-	if !strings.EqualFold(req.URL[0:8],"https://") && !strings.EqualFold(req.URL[0:7],"http://") {
-		RespondError(w, apperror.BadRequest("Unsafe URL", nil))
+	validURL, err := validator.ValidateURL(req.URL)
+	if err != nil{
+		RespondError(w,err)
 		return
 	}
 
 	// Call service layer
-	shortCode, err := h.service.ShortenURL(r.Context(), req.URL)
+	shortCode, err := h.service.ShortenURL(r.Context(), validURL)
 	if err != nil{
 		RespondError(w,err)
 		return
@@ -99,7 +90,7 @@ func (h *URLHandler) Stats(w http.ResponseWriter, r *http.Request){
 		return
 	}
 
-	RespondJSON(w, http.StatusAccepted, ShortenStats{
+	RespondJSON(w, http.StatusOK, ShortenStats{
 		LongURL: longUrl,
 		ShortCode: shortCode,
 		Timestamp: timestamp,
@@ -110,13 +101,13 @@ func (h *URLHandler) Stats(w http.ResponseWriter, r *http.Request){
 func (h *URLHandler) Delete(w http.ResponseWriter, r *http.Request){
 	shortCode := r.PathValue("code")
 
-	deleted ,err := h.service.DeleteURL(r.Context(),shortCode)
+	err := h.service.DeleteURL(r.Context(),shortCode)
 	if err != nil {
 		RespondError(w,err)
 		return
 	}
 
-	RespondJSON(w, http.StatusOK,DeleteRequest{
-		Deleted: deleted,
+	RespondJSON(w, http.StatusNoContent,DeleteRequest{
+		Deleted: true,
 	})
 }
